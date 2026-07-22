@@ -1,0 +1,29 @@
+# Render Blueprint for TripMate AI
+# Docs: https://render.com/docs/blueprint-spec
+#
+# Deploy: Render Dashboard > New > Blueprint > connect this repo.
+# Secrets (sync: false) are NOT stored here — Render prompts for them on first
+# deploy. Use your existing Render Postgres "Internal Database URL" for
+# DATABASE_URL (same region = lowest latency).
+
+services:
+  - type: web
+    name: tripmate-ai
+    runtime: docker
+    plan: free
+    region: ohio            # match your Postgres region (…ohio-postgres.render.com)
+    healthCheckPath: /health
+    autoDeploy: true        # redeploy automatically on push to the default branch
+    envVars:
+      - key: DATABASE_URL
+        sync: false          # paste your Render Postgres Internal Database URL
+      - key: GROQ_API_KEY
+        sync: false
+      - key: AVIATIONSTACK_API_KEY
+        sync: false
+      - key: TAVILY_API_KEY
+        sync: false
+      - key: OPENWEATHER_API_KEY
+        sync: false
+      - key: DEFAULT_ORIGIN_IATA
+        value: DAC           # not a secret — safe to keep here
