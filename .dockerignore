@@ -5,3 +5,15 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+
+# Secrets — never bake these into an image
+.env
+
+# Python caches
+__pycache__/
+*.pyc
+
+# Git / editor cruft
+.git
+.gitignore
+.DS_Store

@@ -59,6 +59,9 @@ def get_forecast(city: str):
 
     data = response.json()
 
+    if response.status_code != 200:
+        return data
+
     forecast = []
 
     # Return first 5 forecast entries

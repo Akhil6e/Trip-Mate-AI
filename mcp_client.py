@@ -19,6 +19,23 @@ OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
 
+_missing_keys = [
+    name
+    for name, value in {
+        "TAVILY_API_KEY": TAVILY_API_KEY,
+        "AVIATIONSTACK_API_KEY": AVIATION_STACK_API_KEY,
+        "OPENWEATHER_API_KEY": OPENWEATHER_API_KEY,
+        "GROQ_API_KEY": GROQ_API_KEY,
+    }.items()
+    if not value
+]
+if _missing_keys:
+    raise ValueError(
+        f"Missing required environment variables: {', '.join(_missing_keys)}. "
+        "Please add them to your .env file."
+    )
+
+
 # LLM
 llm = ChatGroq(
     model="llama-3.3-70b-versatile",
@@ -80,123 +97,51 @@ async def get_all_tools():
 
 
 ###################################
-# Tavlily and Aviation Tools
+# MCP Tool Cache
 ###################################
+# All MCP tools (Tavily, AviationStack, Weather) are fetched once and cached
+# by name in a single dict, then invoked through one generic caller.
 
+mcp_tools = {}
 
-search_tool = None
-aviation_tools = {}
 
 async def initialize_mcp():
+    global mcp_tools
 
-    global search_tool
-    global aviation_tools
-
-    if search_tool is not None and aviation_tools:
+    if mcp_tools:
         return
 
     tools = await client.get_tools()
 
     print("\nAvailable MCP Tools:\n")
-
     for tool in tools:
         print(tool.name)
 
-    search_tool = next(
-        tool
-        for tool in tools
-        if tool.name == "tavily_search"
-    )
+    mcp_tools = {tool.name: tool for tool in tools}
 
-    aviation_tools = {
-        tool.name: tool
-        for tool in tools
-        if tool.name != "tavily_search"
-    }
+
+async def call_mcp_tool(tool_name: str, tool_args: dict = None):
+    await initialize_mcp()
+    tool = mcp_tools[tool_name]
+    return await tool.ainvoke(tool_args or {})
 
 
 
 
 async def tavily_mcp_search(query: str):
-    await initialize_mcp()
-    result = await search_tool.ainvoke(
-        {
-            "query": query
-        }
-    )
-    return result
+    return await call_mcp_tool("tavily_search", {"query": query})
 
 
-
-
-async def aviation_mcp_call(
-    tool_name: str,
-    tool_args: dict = None
-):
-
-    await initialize_mcp()
-
-    tool = aviation_tools[tool_name]
-
-    result = await tool.ainvoke(
-        tool_args or {}
-    )
-
-    return result
-
-
-
-
-
-
-###################################
-# Weather Tools
-###################################
-
-weather_tool = None
-forecast_tool = None
-
-
-async def initialize_weather_tools():
-
-    global weather_tool, forecast_tool
-
-    if weather_tool is not None:
-        return
-
-    tools = await client.get_tools()
-
-    weather_tool = next(
-        t for t in tools
-        if t.name == "get_current_weather"
-    )
-
-    forecast_tool = next(
-        t for t in tools
-        if t.name == "get_forecast"
-    )
+async def aviation_mcp_call(tool_name: str, tool_args: dict = None):
+    return await call_mcp_tool(tool_name, tool_args)
 
 
 async def weather_mcp_search(city: str):
-
-    await initialize_weather_tools()
-
-    return await weather_tool.ainvoke(
-        {
-            "city": city
-        }
-    )
+    return await call_mcp_tool("get_current_weather", {"city": city})
 
 
 async def forecast_mcp_search(city: str):
-
-    await initialize_weather_tools()
-
-    return await forecast_tool.ainvoke(
-        {
-            "city": city
-        }
-    )
+    return await call_mcp_tool("get_forecast", {"city": city})
 
 
 

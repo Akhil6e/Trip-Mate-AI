@@ -175,7 +175,11 @@ async def flight_agent(state: TravelState):
 async def hotel_agent(state: TravelState):
     query = f"Best hotels for {state['user_query']}"
     # hotel_results = tavily_search(query)
-    hotel_results = await tavily_mcp_search(query)
+
+    try:
+        hotel_results = await tavily_mcp_search(query)
+    except Exception as e:
+        hotel_results = f"Hotel information unavailable: {str(e)}"
 
     return {
         "hotel_results": hotel_results,
@@ -194,11 +198,15 @@ async def hotel_agent(state: TravelState):
 
 async def weather_agent(state: TravelState):
 
-    city = await extract_destination(state["user_query"])
+    try:
+        city = await extract_destination(state["user_query"])
 
-    weather_data = await weather_mcp_search(city)
+        weather_data = await weather_mcp_search(city)
 
-    forecast_data = await forecast_mcp_search(city)
+        forecast_data = await forecast_mcp_search(city)
+    except Exception as e:
+        weather_data = f"Weather information unavailable: {str(e)}"
+        forecast_data = ""
 
     return {
         "weather_results": f"""
@@ -212,7 +220,8 @@ async def weather_agent(state: TravelState):
             AIMessage(
                 content="Weather information fetched"
             )
-        ]
+        ],
+        "llm_calls": state.get("llm_calls", 0) + 1
     }
 
 
